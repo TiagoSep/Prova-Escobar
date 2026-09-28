@@ -1,3 +1,4 @@
+```plantuml
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
@@ -38,4 +39,6 @@ legend right
   |<#1F78B4> sistema |
   |<#999999> sistema externo |
 endlegend
+
 @enduml
+```
