@@ -1,0 +1,53 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+
+title  Pedidos
+
+AddElementTag("c", $bgColor="#4CAF50", $fontColor="#FFFFFF")
+AddElementTag("e", $bgColor="#F39C12", $fontColor="#FFFFFF")
+AddElementTag("db", $bgColor="#8E44AD", $fontColor="#FFFFFF")
+AddElementTag("mq", $bgColor="#E74C3C", $fontColor="#FFFFFF")
+AddElementTag("p", $bgColor="#4A90E2", $fontColor="#FFFFFF")
+
+Person(cliente, "Cliente / API Gateway", "Envia requisicoes HTTP", $tags="p")
+
+System_Ext(postgres, "PostgreSQL", "Banco de dados dos pedidos", $tags="db")
+System_Ext(rabbitmq, "RabbitMQ", "Broker de mensagens", $tags="mq")
+System_Ext(maps, "API de Mapas", "Calcula distancia e rota", $tags="e")
+System_Ext(pagamentos, "Provedores de Pagamento", "Cartao, Pix e Vale-Refeicao", $tags="e")
+
+Container_Boundary(pedidos, "pedidos-service - Node.js 20 + Express") {
+    Component(controller, "PedidoController", "Express Router", "Recebe requisicoes HTTP das rotas de pedidos", $tags="c")
+    Component(verifyToken, "verifyToken", "Express Middleware", "Valida o JWT antes de permitir acesso as rotas", $tags="c")
+    Component(service, "PedidoService", "JavaScript", "Orquestra a criacao e confirmacao dos pedidos sem conhecer o banco", $tags="c")
+    Component(repository, "PedidoRepository", "Repository", "Abstracao para acesso e persistencia dos pedidos", $tags="c")
+    Component(mapAdapter, "MapAdapter", "Adapter HTTP", "Consulta a API de mapas para calcular a taxa de entrega", $tags="c")
+    Component(strategy, "PaymentStrategy", "Strategy", "Define o contrato comum dos meios de pagamento", $tags="c")
+    Component(cartao, "CartaoPayment", "Strategy", "Implementa pagamento com cartao de credito", $tags="c")
+    Component(pix, "PixPayment", "Strategy", "Implementa pagamento via Pix", $tags="c")
+    Component(vale, "ValeRefeicaoPayment", "Strategy", "Implementa pagamento com vale-refeicao", $tags="c")
+    Component(publisher, "EventPublisher", "RabbitMQ Client", "Publica o evento PedidoConfirmado", $tags="c")
+}
+
+Rel(cliente, controller, "Envia requisicoes", "HTTPS / JSON")
+Rel(controller, verifyToken, "Passa pelo middleware", "JWT")
+Rel(verifyToken, service, "Autoriza acesso", "JWT valido")
+Rel(controller, service, "Encaminha dados", "Chamada interna")
+Rel(service, repository, "Consulta e persiste pedidos", "DIP")
+Rel(repository, postgres, "Le e grava pedidos", "SQL")
+Rel(service, mapAdapter, "Solicita taxa de entrega", "Chamada interna")
+Rel(mapAdapter, maps, "Consulta distancia e rota", "HTTPS / REST")
+Rel(service, strategy, "Processa pagamento", "Strategy")
+Rel(strategy, cartao, "Utiliza")
+Rel(strategy, pix, "Utiliza")
+Rel(strategy, vale, "Utiliza")
+Rel(cartao, pagamentos, "Processa pagamento", "HTTPS / API")
+Rel(pix, pagamentos, "Processa pagamento", "HTTPS / API")
+Rel(vale, pagamentos, "Processa pagamento", "HTTPS / API")
+Rel(service, publisher, "Confirma pedido", "Chamada interna")
+Rel(publisher, rabbitmq, "Publica PedidoConfirmado", "AMQP")
+@enduml
