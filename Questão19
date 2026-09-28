@@ -1,0 +1,76 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+
+title PalcoLivre
+
+AddElementTag("p", $bgColor="#4A90E2", $fontColor="#FFFFFF")
+AddElementTag("c", $bgColor="#4CAF50", $fontColor="#FFFFFF")
+AddElementTag("e", $bgColor="#F39C12", $fontColor="#FFFFFF")
+AddElementTag("db", $bgColor="#8E44AD", $fontColor="#FFFFFF")
+AddElementTag("ca", $bgColor="#F1C40F", $fontColor="#000000")
+AddElementTag("mq", $bgColor="#E74C3C", $fontColor="#FFFFFF")
+
+Person(b, "Comprador", "Compra ingressos.", $tags="p")
+Person(pr, "Produtor", "Cadastra eventos e acompanha vendas.", $tags="p")
+
+System_Ext(pg, "Gateway de Pagamento", "Cartão/Pix e webhook de confirmação.", $tags="e")
+System_Ext(em, "Serviço de E-mail", "Envia ingressos com QR Code.", $tags="e")
+
+System_Boundary(pl, "PalcoLivre") {
+  Container(web, "Aplicação Web", "React / SPA", "Compra de ingressos.", $tags="c")
+  Container(app, "Aplicativo Mobile", "Android/iOS", "Compra de ingressos.", $tags="c")
+  Container(portal, "Portal do Produtor", "React / SPA", "Cadastro de eventos e vendas.", $tags="c")
+  Container(api, "API Pública", "Node.js / REST", "API única para Web, Mobile e Portal.", $tags="c")
+  Container(fila, "Fila Virtual", "Node.js", "Controla acesso em picos de 50x.", $tags="c")
+  Container(cat, "Serviço de Catálogo", "Node.js", "Eventos, datas, locais e preços.", $tags="c")
+  Container(res, "Serviço de Reservas", "Node.js", "Reserva assentos por 10 minutos e evita venda duplicada.", $tags="c")
+  Container(pay, "Serviço de Pagamentos", "Node.js", "Processa pagamentos e confirmações.", $tags="c")
+  Container(ing, "Serviço de Ingressos", "Node.js", "Gera QR Code e solicita envio.", $tags="c")
+  ContainerDb(db, "Banco de Dados", "PostgreSQL", "Dados da plataforma.", $tags="db")
+  ContainerDb(cache, "Cache", "Redis", "Dados frequentes do catálogo.", $tags="ca")
+  ContainerQueue(mq, "Broker de Mensagens", "RabbitMQ / AMQP", "Eventos assíncronos.", $tags="mq")
+}
+
+Rel(b, web, "Compra", "HTTPS")
+Rel(b, app, "Compra", "HTTPS")
+Rel(pr, portal, "Gerencia eventos e vendas", "HTTPS")
+
+Rel(web, api, "Consome API", "HTTPS/JSON")
+Rel(app, api, "Consome API", "HTTPS/JSON")
+Rel(portal, api, "Consome API", "HTTPS/JSON")
+
+Rel(api, fila, "Entra/consulta fila", "HTTPS/JSON")
+Rel(fila, api, "Libera acesso", "HTTPS/JSON")
+
+Rel(api, cat, "Consulta catálogo", "HTTPS/JSON")
+Rel(cat, cache, "Lê catálogo", "Redis")
+Rel(cat, db, "Dados de eventos", "SQL")
+
+Rel(api, res, "Reserva assento", "HTTPS/JSON")
+Rel(res, db, "Reserva exclusiva/10 min", "SQL")
+
+Rel(api, pay, "Inicia pagamento", "HTTPS/JSON")
+Rel(pay, pg, "Cartão/Pix", "HTTPS/JSON")
+Rel(pg, pay, "Confirma Pix", "HTTPS/Webhook")
+
+Rel(pay, mq, "Pagamento confirmado", "AMQP")
+Rel(mq, ing, "Emite ingresso", "AMQP")
+Rel(ing, db, "Registra ingresso", "SQL")
+Rel(ing, em, "Envia QR Code", "HTTPS/API")
+
+Rel(api, db, "Dados da plataforma", "SQL")
+
+legend right
+|= Cor |= Elemento |= Significado |
+|<back:#4A90E2> Pessoa </back>|Pessoa|Usuário do sistema|
+|<back:#4CAF50> Container </back>|Container|Aplicação ou serviço interno|
+|<back:#F39C12> Externo </back>|Sistema externo|Serviço fora do PalcoLivre|
+|<back:#8E44AD> Banco </back>|Banco de dados|Armazena dados persistentes|
+|<back:#F1C40F> Cache </back>|Cache|Armazena dados acessados frequentemente|
+|<back:#E74C3C> Broker </back>|Broker|Comunicação assíncrona entre serviços|
+endlegend
+@enduml
