@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+skinparam wrapWidth 200
+skinparam maxMessageSize 150
+hide stereotype
+
+title Sistema VacinaJá
+
+Person(cidadao, "Cidadão", "Acessa o sistema para agendar dia, horário e unidade de vacinação.")
+Person(profissional, "Profissional de Saúde", "Confirma a aplicação da dose nas unidades de saúde.")
+Person(gestor, "Gestor da Secretaria", "Consulta painéis analíticos com a cobertura vacinal por bairro.")
+
+System(vacinaja, "VacinaJá", "Sistema municipal de agendamento e controle de vacinação da Secretaria Municipal de Saúde.")
+
+System_Ext(govbr, "gov.br", "Serviço federal de autenticação digital unificada.")
+System_Ext(rnds, "RNDS", "Rede Nacional de Dados em Saúde (Ministério da Saúde).")
+System_Ext(meusus, "Meu SUS Digital", "Aplicativo que exibe a carteira de vacinação do cidadão.")
+System_Ext(mensageria, "Plataforma de Mensageria", "Serviço contratado para envio de lembretes via SMS ou WhatsApp.")
+System_Ext(cnes, "CNES", "Cadastro Nacional de Estabelecimentos de Saúde, fornece dados de unidades e profissionais.")
+
+Rel(cidadao, vacinaja, "Agenda vacinação e consulta agendamentos", "HTTPS / App ou Navegador")
+Rel(cidadao, govbr, "Realiza autenticação de acesso", "HTTPS / OAuth2")
+Rel(vacinaja, govbr, "Valida credenciais do cidadão", "API REST")
+
+Rel(profissional, vacinaja, "Confirma aplicação da dose da vacina", "HTTPS")
+Rel(gestor, vacinaja, "Visualiza indicadores e cobertura vacinal", "HTTPS")
+
+Rel(vacinaja, rnds, "Envia registro de vacinação aplicado", "API REST")
+Rel(rnds, meusus, "Disponibiliza registros de vacinação para a carteira digital", "Integração de dados")
+
+Rel(vacinaja, mensageria, "Dispara lembretes de véspera de agendamento", "API")
+Rel(vacinaja, cnes, "Consulta lista de unidades e profissionais habilitados")
+
+legend right
+  |= Legenda |
+  |<#1168BD> pessoa |
+  |<#1F78B4> sistema |
+  |<#999999> sistema externo |
+endlegend
+@enduml
